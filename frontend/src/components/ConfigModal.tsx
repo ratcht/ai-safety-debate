@@ -20,7 +20,8 @@ export default function ConfigModal({ isOpen, onClose, config, onSave }: ConfigM
       const roleKey = `debater_${i + 1}` as keyof typeof templates;
       newPrompts.push({
         role: `debater_${i + 1}`,
-        content: templates[roleKey] || `You are Debater ${i + 1}. Present your arguments clearly.`
+        content: templates[roleKey] || `You are AI debater ${i + 1} engaged in an adversarial debate to uncover the most truthful and robust answer to a given question. Your goal is not merely to argue for a position but to expose weaknesses in opposing arguments and reinforce your stance through logical reasoning and verifiable evidence. You must engage critically, anticipate counterarguments, and strive to make the truth evident to a human judge who may not be an expert in the topic.`
+        
       });
     }
 

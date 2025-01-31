@@ -25,8 +25,7 @@ export function useStreamHandler() {
   const currentMessageRef = useRef<number | null>(null);
   const messageBufferRef = useRef<string>('');
 
-  const cleanupStream = (state: StreamState) => {
-    const { eventSource, timeout, setCurrentStreamId } = state;
+  const cleanupStream = ({ eventSource, timeout, setCurrentStreamId }: StreamState) => {
     eventSource.close();
     clearTimeout(timeout);
     setCurrentStreamId(null);
@@ -43,17 +42,16 @@ export function useStreamHandler() {
         round.id === lastRound.id
           ? {
               ...round,
-              messages: [...round.messages, {
-                id: currentMessageRef.current!,
-                response: '',
-                isComplete: false
-              }]
+              messages: [
+                ...round.messages,
+                { id: currentMessageRef.current!, response: '', isComplete: false }
+              ]
             }
           : round
       );
     });
   };
-  
+
   const handleToken = (updateDebates: StreamState['updateDebates'], message: string) => {
     if (currentMessageRef.current) {
       messageBufferRef.current += message;
@@ -83,23 +81,23 @@ export function useStreamHandler() {
         messageId: currentMessageRef.current,
         buffer: messageBufferRef.current
       });
-      
+
       messageBufferRef.current = '';
       updateDebates(prev => {
         const lastRound = prev[prev.length - 1];
         if (!lastRound) return prev;
 
-        const updatedRound = {
-          ...lastRound,
-          messages: lastRound.messages.map(msg => {
-            const isCurrentMessage = msg.id === currentMessageRef.current;
-            return isCurrentMessage ? { ...msg, isComplete: true } : msg;
-          })
-        };
-
-
         return prev.map(round =>
-          round.id === lastRound.id ? updatedRound : round
+          round.id === lastRound.id
+            ? {
+                ...round,
+                messages: round.messages.map(msg =>
+                  msg.id === currentMessageRef.current
+                    ? { ...msg, isComplete: true }
+                    : msg
+                )
+              }
+            : round
         );
       });
       currentMessageRef.current = null;
@@ -109,59 +107,47 @@ export function useStreamHandler() {
   const handleRoundStart = (updateDebates: StreamState['updateDebates']) => {
     currentRoundRef.current = Date.now();
     messageBufferRef.current = '';
-    updateDebates(prev => [...prev, {
-      id: currentRoundRef.current!,
-      messages: []
-    }]);
+    updateDebates(prev => [
+      ...prev,
+      { id: currentRoundRef.current!, messages: [] }
+    ]);
   };
 
   const handleDebateComplete = (updateDebates: StreamState['updateDebates']) => {
     updateDebates(prev => {
       const lastRound = prev[prev.length - 1];
-      if (lastRound) {
-        const updated = prev.map(round => 
-          round.id === lastRound.id 
-            ? { ...round, isComplete: true }
-            : round
-        );
-        return updated;
-      }
-      return prev;
+      if (!lastRound) return prev;
+
+      return prev.map(round =>
+        round.id === lastRound.id ? { ...round, isComplete: true } : round
+      );
     });
   };
 
-  const setupEventHandlers = (state: StreamState) => {
-    const { eventSource, updateDebates } = state;
-
+  const setupEventHandlers = ({ eventSource, updateDebates, timeout, setCurrentStreamId }: StreamState) => {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         switch (data.type) {
           case 'start_debate':
             messageBufferRef.current = '';
             break;
-
           case 'round_start':
             handleRoundStart(updateDebates);
             break;
-
           case 'message_start':
             handleMessageStart(updateDebates);
             break;
-            
           case 'token':
             handleToken(updateDebates, data.message);
             break;
-
           case 'token_end':
             handleToken(updateDebates, '');
             break;
-            
           case 'message_complete':
             handleMessageComplete(updateDebates);
             break;
-
           case 'round_complete':
             currentRoundRef.current = null;
             messageBufferRef.current = '';
@@ -169,21 +155,21 @@ export function useStreamHandler() {
           case 'debate_complete':
             console.log('Debate complete event received');
             handleDebateComplete(updateDebates);
-            cleanupStream(state);
+            cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
             break;
           case 'error':
-            cleanupStream(state);
+            cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
             break;
         }
       } catch (error) {
         console.error('Failed to parse message:', error);
-        cleanupStream(state);
+        cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
       }
     };
 
     eventSource.onerror = (error) => {
       console.error('EventSource error:', error);
-      cleanupStream(state);
+      cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
     };
   };
 
@@ -194,13 +180,10 @@ export function useStreamHandler() {
     setCurrentStreamId: StreamState['setCurrentStreamId']
   ) => {
     try {
-      const response = await fetch('http://localhost:8000/start-debate', {
+      const response = await fetch('http://localhost:8000/debate/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: input,
-          config: config
-        }),
+        body: JSON.stringify({ prompt: input, config })
       });
 
       if (!response.ok) throw new Error('Failed to start stream');
@@ -211,7 +194,7 @@ export function useStreamHandler() {
         eventSourceRef.current.close();
       }
 
-      const eventSource = new EventSource(`http://localhost:8000/stream/${debate_id}`);
+      const eventSource = new EventSource(`http://localhost:8000/debate/${debate_id}/stream`);
       eventSourceRef.current = eventSource;
 
       const timeout = setTimeout(() => {
@@ -219,7 +202,7 @@ export function useStreamHandler() {
           console.log("Timeout hit");
           cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
         }
-      }, 240000); // 1 minute timeout
+      }, 240000);
 
       setupEventHandlers({ eventSource, timeout, setCurrentStreamId, updateDebates });
 

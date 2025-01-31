@@ -19,9 +19,9 @@ export default function Navbar({ onOpenConfig }: NavbarProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold">
-                <span className="text-indigo-600">AI</span> Safety Debate
+                <span className="text-indigo-600">AI</span> Safety via. Debate
               </h1>
-              <p className="text-sm text-gray-500">Exploring AI ethics through dialogue</p>
+              <p className="text-sm text-gray-500">A simulation of the AI Safety via. Debate Paper: <a href="https://arxiv.org/abs/1805.00899">https://arxiv.org/abs/1805.00899</a></p>
             </div>
           </div>
           

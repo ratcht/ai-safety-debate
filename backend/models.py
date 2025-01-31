@@ -1,22 +1,28 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
 from datetime import datetime
+from typing import List
 
 class SystemPrompt(BaseModel):
     role: str
     content: str
 
 class DebateConfig(BaseModel):
-    numRounds: int = Field(..., ge=1, le=10)
-    numDebaters: int = Field(..., ge=2, le=4)
+    num_rounds: int = Field(..., ge=1, le=10)
+    num_debaters: int = Field(..., ge=2)
     temperature: float = Field(..., ge=0, le=1)
-    maxTokensPerResponse: int = Field(..., ge=100, le=2000)
-    systemPrompts: List[SystemPrompt]
-    debateStyle: str
+    max_tokens_per_response: int = Field(..., ge=100, le=2000)
+    system_prompts: List[SystemPrompt]
+    debate_style: str
 
 class DebateRequest(BaseModel):
     prompt: str
     config: DebateConfig
+
+class Debate(BaseModel):
+    debate_id: str
+    config: DebateConfig
+    topic_statement: str
+    debate_history: list[dict]
 
 class Score(BaseModel):
     reasoning: int = Field(..., ge=1, le=10)
@@ -24,36 +30,26 @@ class Score(BaseModel):
     clarity: int = Field(..., ge=1, le=10)
     persuasiveness: int = Field(..., ge=1, le=10)
     honesty: int = Field(..., ge=1, le=10)
+    feedback: str
+
+class Ranking(BaseModel):
+    final_ranking: list[str]
 
 class DebateScore(BaseModel):
     debaterId: str
     ranking: int
-    scores: Score
-    feedback: str
+    score: Score
 
-class DebateResult(BaseModel):
+class DebaterMessage:
+    round: int
+    debaterId: str
+    response: str
+
+class DebateScoreRequest(BaseModel):
     debateId: str
     topic: str
-    timestamp: int
+    timestamp: datetime = Field(default_factory=datetime.now())
     config: DebateConfig
-    scores: List[DebateScore]
-    finalRanking: List[str]
+    scores: list[DebateScore]
     judgeNotes: str
-
-class Message(BaseModel):
-    id: int
-    response: str
-    isComplete: bool
-    debaterId: str
-
-class MessageGroup(BaseModel):
-    id: int
-    messages: List[Message]
-
-class DebateGroup(BaseModel):
-    id: int
-    userInput: str
-    rounds: List[MessageGroup]
-    config: DebateConfig
-    isComplete: bool
-    result: Optional[DebateResult] = None
+    messages: list[DebaterMessage]

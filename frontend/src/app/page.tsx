@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import MessageInput from '@/components/MessageInput';
 import MessageContainer from '@/components/MessageContainer';
 import UserMessageContainer from '@/components/UserMessageContainer';
@@ -10,6 +10,7 @@ import ConfigModal from '@/components/ConfigModal';
 import { useStreamHandler } from '@/hooks/useStreamHandler';
 import type { DebateGroup, MessageGroup, DebateConfig } from '@/types/types';
 import { DEFAULT_CONFIG } from '@/types/types';
+import ScoringContainer from '@/components/ScoringContainer';
 
 export default function DebateStream() {
   // Core state management
@@ -88,14 +89,13 @@ export default function DebateStream() {
     setIsConfigOpen(false);
   };
 
-  const currentDebateRef = useRef<HTMLDivElement | null>(null);
 
   // Add useEffect for scrolling
   useEffect(() => {
     if (currentStreamId) {
       const element = document.getElementById(`debate-${currentStreamId}`);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        element.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
     }
   }, [currentStreamId, debateGroups]);
@@ -122,21 +122,21 @@ export default function DebateStream() {
         </div> */}
 
         <div className="space-y-12">
-          {debateGroups.map((group) => (
-            <div key={group.id}
-                 id={`debate-${group.id}`} // Add ID for scrolling
+          {debateGroups.map((debate) => (
+            <div key={debate.id}
+                 id={`debate-${debate.id}`} // Add ID for scrolling
                  className="bg-white rounded-xl shadow-lg p-6 space-y-6 border border-gray-100">
               <div className="pb-4 border-b border-gray-100">
                 <span className="text-sm font-medium text-gray-500">Debate Topic</span>
                 <h2 className="text-xl font-semibold text-gray-800 mt-1">
-                  {group.userInput}
+                  {debate.userInput}
                 </h2>
               </div>
               
-              {group.rounds.map((round, roundIndex) => (
+              {debate.rounds.map((round, roundIndex) => (
                 <div key={round.id} className="space-y-6">
                   <UserMessageContainer 
-                    userInput={roundIndex === 0 ? group.userInput : undefined}
+                    userInput={roundIndex === 0 ? debate.userInput : undefined}
                   />
                   <div className="flex items-center gap-2 mt-8 mb-4">
                     <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold">
@@ -156,8 +156,14 @@ export default function DebateStream() {
                 </div>
               ))}
 
-              {group.isComplete && (
-                <p>Debate Complete!</p>
+              {debate.isComplete && (
+                <ScoringContainer
+                  debate={debate}
+                  onScoreSubmit={(result) => {
+                    console.log("Score Submitted..."); 
+                    console.log("Result: ", result)
+                  }}               
+                />
               )}              
             </div>
           ))}
