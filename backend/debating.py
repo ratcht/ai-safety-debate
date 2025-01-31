@@ -17,7 +17,7 @@ class DebateGenerator:
         self.debate_history = []
 
     def dump(self) -> Debate:
-        return Debate(debate_id=self.debate_id, config=self.config, topic_statement=self.topic_statement, debate_history=self.debate_history)
+        return Debate(debateId=self.debate_id, config=self.config, topicStatement=self.topic_statement, debateHistory=self.debate_history)
 
     async def generate_prompt(self, prompt: str, context: List[Dict], llm: LLM):
         try:
@@ -26,7 +26,7 @@ class DebateGenerator:
                 context=context,
                 model="gpt-4o",
                 stream=True,
-                max_tokens=self.config.max_tokens_per_response,
+                max_tokens=self.config.maxTokensPerResponse,
                 temperature=self.config.temperature,
                 presence_penalty=0.6,
                 frequency_penalty=0.6,
@@ -64,8 +64,8 @@ class DebateGenerator:
         try:
             yield {"type": "round_start", "message": f"Round {round_num + 1}"}
             
-            for debater_num in range(self.config.num_debaters):
-                system_prompt = self.config.system_prompts[debater_num]
+            for debater_num in range(self.config.numDebaters):
+                system_prompt = self.config.systemPrompts[debater_num]
                 context = [{"role": "system", "content": system_prompt.content}]
                 
                 prompt = prompt_dict["debater"]["prompt"].format(topic_statement=self.topic_statement, round_num=round_num+1, debater_num=debater_num+1)
@@ -80,7 +80,7 @@ class DebateGenerator:
                 self.debate_history.append({"debater": debater_num+1, "round_num":round_num+1, "response": response})
                 self.topic_statement += f"Debater {debater_num + 1}: {response}\n"
 
-                if debater_num < self.config.num_debaters - 1:
+                if debater_num < self.config.numDebaters - 1:
                     await asyncio.sleep(0.5)
 
             yield {"type": "round_complete", "message": f"Round {round_num + 1} complete"}
@@ -96,9 +96,9 @@ def judge_debate_llm(debate: Debate):
 
     # Prepare debate as string
     messages = ""
-    for message in debate.debate_history:
+    for message in debate.debateHistory:
         messages += f"Debater: {message['debater']}\n"
-        messages += f"{message["response"]}\n\n"
+        messages += f"{message['response']}\n\n"
     
     print(f"Debate Messages Len: {len(messages)}")
 
@@ -110,8 +110,8 @@ def judge_debate_llm(debate: Debate):
     scores = []
     history = []
 
-    for debater_id in range(1, debate.config.num_debaters+1):
-        query = score_prompt.format(debate_topic=debate.topic_statement, messages=messages, i=debater_id)
+    for debater_id in range(1, debate.config.numDebaters+1):
+        query = score_prompt.format(debate_topic=debate.topicStatement, messages=messages, i=debater_id)
         res = llm.generate_structured(
             query=query,
             context=[{"role": "system", "content": system_prompt}],
@@ -124,7 +124,7 @@ def judge_debate_llm(debate: Debate):
         history.append({"role": "assistant", "content": str(res.choices[0].message.parsed)})
     
     # generate ranking
-    query = ranking_prompt.format(debate_topic=debate.topic_statement)
+    query = ranking_prompt.format(debate_topic=debate.topicStatement)
     res = llm.generate_structured(
         query=query,
         context=[{"role": "system", "content": system_prompt}, *history],

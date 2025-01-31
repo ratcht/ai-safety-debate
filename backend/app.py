@@ -30,7 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-debates = {}
 
 async def run_debate(prompt: str, config: DebateConfig, debate_id: str):
     try:
@@ -42,7 +41,7 @@ async def run_debate(prompt: str, config: DebateConfig, debate_id: str):
         print(f"Starting debate {debate_id}")
         yield json.dumps({"type": "start_debate", "message": "Starting debate"})
 
-        for i in range(config.num_rounds):
+        for i in range(config.numRounds):
             print(f"Starting round {i + 1}")
             async for item in debate_gen.generate_round(i, llm):
                 yield json.dumps(item)
@@ -59,19 +58,31 @@ async def run_debate(prompt: str, config: DebateConfig, debate_id: str):
         yield json.dumps({"type": "error", "message": "Error in debate generation"})
 
 
+debates = {}
+
+
+from fastapi import Header, HTTPException
+
 @app.post("/debate/start")
-async def start_debate(request: DebateRequest):
+async def start_debate(request: DebateRequest, api_key: str = Header(None)):
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+    
+    print("Start Debate Received")
     debate_id = str(len(debates) + 1)
-    debates[debate_id] = {"request": request}
+    debates[debate_id] = {
+        "request": request,
+        "api_key": api_key  # Store the API key with the debate
+    }
     return {"debate_id": debate_id}
 
 @app.get("/debate/{debate_id}/stream")
 async def stream(debate_id: str):
     if debate_id not in debates:
         return {"error": "Debate not found"}
-    
-    debate_request = debates[debate_id]["request"]
-    generator = run_debate(debate_request["prompt"], debate_request["config"], debate_id=debate_id)
+
+    debate_request: DebateRequest = debates[debate_id]["request"]
+    generator = run_debate(debate_request.prompt, debate_request.config, debate_id=debate_id)
     return EventSourceResponse(generator)
 
 @app.get("/debate/{debate_id}/judge/llm")
@@ -87,6 +98,7 @@ async def judge_llm(debate_id: str):
     
     debate: Debate = debates[debate_id]["debate"]
     result = judge_debate_llm(debate)
+
     return result
 
 if __name__ == "__main__":

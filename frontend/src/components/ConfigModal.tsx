@@ -163,7 +163,7 @@ export default function ConfigModal({ isOpen, onClose, config, onSave }: ConfigM
           {/* System Prompts */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">System Prompts</h3>
-            {localConfig.systemPrompts.map((prompt, index) => (
+            {localConfig.systemPrompts.map((prompt: SystemPrompt, index: number) => (
               <div key={prompt.role} className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Debater {index + 1}

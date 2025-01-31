@@ -4,8 +4,8 @@ from pydantic import BaseModel
 import os
 
 class LLM:
-    def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    def __init__(self, api_key=None):
+        self.client = OpenAI(api_key=api_key if api_key else os.getenv("OPENAI_API_KEY"))
 
     def generate(self, query: str, context: list[dict], model="gpt-4o", **kwargs):
         res = self.client.chat.completions.create(

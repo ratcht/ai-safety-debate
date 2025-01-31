@@ -11,6 +11,7 @@ import { useStreamHandler } from '@/hooks/useStreamHandler';
 import type { DebateGroup, MessageGroup, DebateConfig } from '@/types/types';
 import { DEFAULT_CONFIG } from '@/types/types';
 import ScoringContainer from '@/components/ScoringContainer';
+import ApiKeyModal from '@/components/ApiKeyModal';
 
 export default function DebateStream() {
   // Core state management
@@ -21,6 +22,14 @@ export default function DebateStream() {
   // Configuration state
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const [debateConfig, setDebateConfig] = useState<DebateConfig>(DEFAULT_CONFIG);
+
+  const [apiKey, setApiKey] = useState<string>('');
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState<boolean>(true);
+
+  const handleKeySubmit = (key: string) => {
+    setApiKey(key);
+    setIsKeyModalOpen(false);
+  };
   
   const { startStream } = useStreamHandler();
 
@@ -32,7 +41,7 @@ export default function DebateStream() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !apiKey) return;
 
     const groupId = Date.now();
     const newDebateGroup: DebateGroup = {
@@ -50,6 +59,7 @@ export default function DebateStream() {
       await startStream(
         input,
         debateConfig,
+        apiKey,  // Pass API key
         (updater: (rounds: MessageGroup[]) => MessageGroup[]) => setDebateGroups(prev => {
           const targetGroup = prev[prev.length - 1];
           if (!targetGroup) return prev;
@@ -102,6 +112,11 @@ export default function DebateStream() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+       <ApiKeyModal 
+        isOpen={isKeyModalOpen} 
+        onSubmit={handleKeySubmit}
+        onClose={() => setIsKeyModalOpen(false)}
+        />
       <Navbar onOpenConfig={() => setIsConfigOpen(true)} />
 
       <ConfigModal

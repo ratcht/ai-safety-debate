@@ -176,17 +176,24 @@ export function useStreamHandler() {
   const startStream = async (
     input: string,
     config: DebateConfig,
+    apiKey: string,  // Add API key parameter
     updateDebates: StreamState['updateDebates'],
     setCurrentStreamId: StreamState['setCurrentStreamId']
   ) => {
     try {
       const response = await fetch('http://localhost:8000/debate/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey  // Add API key to headers
+         },
         body: JSON.stringify({ prompt: input, config })
       });
 
-      if (!response.ok) throw new Error('Failed to start stream');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to start stream. Status: ${response.status}. Error: ${errorText}`);
+    }
 
       const { debate_id } = await response.json();
 

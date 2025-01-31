@@ -101,7 +101,7 @@ export default function ScoringContainer({
       score.debaterId === debaterId
         ? {
           ...score,
-          scores: {
+          score: {         // Changed from 'scores' to 'score'
             ...score.score,
             [category]: value
           }
@@ -309,7 +309,13 @@ export default function ScoringContainer({
                 value={score.score.feedback}
                 onChange={(e) => setScores(prev => prev.map(s =>
                   s.debaterId === score.debaterId
-                    ? { ...s, feedback: e.target.value }
+                    ? { 
+                        ...s, 
+                        score: {
+                          ...s.score,
+                          feedback: e.target.value
+                        }
+                      }
                     : s
                 ))}
                 disabled={isSubmitted}
