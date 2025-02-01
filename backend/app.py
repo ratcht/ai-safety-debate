@@ -63,7 +63,7 @@ debates = {}
 
 from fastapi import Header, HTTPException
 
-@app.post("/debate/start")
+@app.post("/api/debate/start")
 async def start_debate(request: DebateRequest, api_key: str = Header(None)):
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
@@ -76,7 +76,7 @@ async def start_debate(request: DebateRequest, api_key: str = Header(None)):
     }
     return {"debate_id": debate_id}
 
-@app.get("/debate/{debate_id}/stream")
+@app.get("/api/debate/{debate_id}/stream")
 async def stream(debate_id: str):
     if debate_id not in debates:
         return {"error": "Debate not found"}
@@ -85,7 +85,7 @@ async def stream(debate_id: str):
     generator = run_debate(debate_request.prompt, debate_request.config, debate_id=debate_id)
     return EventSourceResponse(generator)
 
-@app.get("/debate/{debate_id}/judge/llm")
+@app.get("/api/debate/{debate_id}/judge/llm")
 async def judge_llm(debate_id: str):
     """
     Evaluate the debate using an LLM, then, download the results.

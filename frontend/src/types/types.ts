@@ -90,6 +90,18 @@ export interface ConfigModalProps {
 
 
 
+export interface MessageInputProps {
+
+  input: string;
+
+  isStreaming: boolean;
+
+  onInputChange: (value: string) => void;
+
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+
+}
+
 // ========================
 // Other constants and templates
 // ========================
@@ -110,6 +122,7 @@ export const DEFAULT_CONFIG: DebateConfig = {
   ],
   debateStyle: "formal"
 };
+
 
 
 export const PROMPT_TEMPLATES = {

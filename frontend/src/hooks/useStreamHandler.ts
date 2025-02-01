@@ -181,7 +181,8 @@ export function useStreamHandler() {
     setCurrentStreamId: StreamState['setCurrentStreamId']
   ) => {
     try {
-      const response = await fetch('http://localhost:8000/debate/start', {
+      // const response = await fetch('http://localhost:8000/debate/start', {
+      const response = await fetch('/api/debate/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,9 +202,10 @@ export function useStreamHandler() {
         eventSourceRef.current.close();
       }
 
-      const eventSource = new EventSource(`http://localhost:8000/debate/${debate_id}/stream`);
-      eventSourceRef.current = eventSource;
+      // const eventSource = new EventSource(`http://localhost:8000/debate/${debate_id}/stream`);
+      const eventSource = new EventSource(`/api/debate/${debate_id}/stream`);
 
+      eventSourceRef.current = eventSource;
       const timeout = setTimeout(() => {
         if (eventSourceRef.current) {
           console.log("Timeout hit");
