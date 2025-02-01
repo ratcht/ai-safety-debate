@@ -226,7 +226,7 @@ export function useStreamHandler() {
       }
   
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.log('Stream aborted');
       } else {
         console.error('Stream error:', error);
