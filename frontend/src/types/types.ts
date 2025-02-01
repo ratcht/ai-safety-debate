@@ -15,6 +15,14 @@ export interface MessageGroup {
 
 }
 
+export interface FloatingButtonProps {
+
+  onClick: () => void;
+
+  disabled: boolean;
+
+}
+
 export interface DebateGroup {
   id: number;
   userInput: string;

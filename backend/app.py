@@ -34,10 +34,15 @@ app.add_middleware(
 
 async def run_debate(prompt: str, config: DebateConfig, debate_id: str):
     try:
+        # Add detailed logging
+        print(f"Starting debate with config: {config}")
+        print(f"API Key being used: {debates[debate_id]['api_key'][:5]}...")  # Only log first 5 chars
+        
         debate_gen = DebateGenerator(debate_id, config)
         debate_gen.topic_statement = f"Debate topic: {prompt}\n\n"
-
-        llm = LLM()
+        
+        llm = LLM(api_key=debates[debate_id]["api_key"])  # Make sure API key is passed
+        
 
         print(f"Starting debate {debate_id}")
         yield json.dumps({"type": "start_debate", "message": "Starting debate"})

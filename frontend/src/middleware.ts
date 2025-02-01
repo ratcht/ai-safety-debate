@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const url = new URL(request.nextUrl.pathname, process.env.NODE_ENV === 'development'
       ? 'http://127.0.0.1:8000'
-      : process.env.API_URL || 'https://your-railway-app.railway.app'
+      : process.env.API_URL || 'https://ai-safety-debate-production.up.railway.app'
     );
     
     // Add custom headers for streaming endpoints
