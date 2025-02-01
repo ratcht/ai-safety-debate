@@ -125,6 +125,10 @@ async def stream(debate_id: str):
         }
     )
 
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
 @app.get("/api/debate/{debate_id}/judge/llm")
 async def judge_llm(debate_id: str):
     """
