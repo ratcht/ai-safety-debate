@@ -24,10 +24,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Add your production domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 
@@ -76,14 +77,53 @@ async def start_debate(request: DebateRequest, api_key: str = Header(None)):
     }
     return {"debate_id": debate_id}
 
+# @app.get("/api/debate/{debate_id}/stream")
+# async def stream(debate_id: str):
+#     if debate_id not in debates:
+#         return {"error": "Debate not found"}
+
+#     debate_request: DebateRequest = debates[debate_id]["request"]
+#     generator = run_debate(debate_request.prompt, debate_request.config, debate_id=debate_id)
+#     return EventSourceResponse(generator)
+
+from fastapi.responses import StreamingResponse
+import asyncio
+import json
+
 @app.get("/api/debate/{debate_id}/stream")
 async def stream(debate_id: str):
-    if debate_id not in debates:
-        return {"error": "Debate not found"}
+    async def generate():
+        try:
+            if debate_id not in debates:
+                yield "data: " + json.dumps({"type": "error", "message": "Debate not found"}) + "\n\n"
+                return
 
-    debate_request: DebateRequest = debates[debate_id]["request"]
-    generator = run_debate(debate_request.prompt, debate_request.config, debate_id=debate_id)
-    return EventSourceResponse(generator)
+            debate_request: DebateRequest = debates[debate_id]["request"]
+            
+            # Send initial event
+            yield "data: " + json.dumps({"type": "start_debate", "message": "Starting debate"}) + "\n\n"
+            await asyncio.sleep(0.01)  # Small delay to ensure proper streaming
+            
+            async for item in run_debate(debate_request.prompt, debate_request.config, debate_id):
+                # Ensure each item is properly formatted and flushed
+                data = "data: " + item + "\n\n"
+                yield data
+                await asyncio.sleep(0.01)  # Small delay between chunks
+                
+        except Exception as e:
+            yield "data: " + json.dumps({'type': 'error', 'message': str(e)}) + "\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+            "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked"
+        }
+    )
 
 @app.get("/api/debate/{debate_id}/judge/llm")
 async def judge_llm(debate_id: str):

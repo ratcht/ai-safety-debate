@@ -13,21 +13,21 @@ interface MessageGroup {
 }
 
 interface StreamState {
-  eventSource: EventSource;
-  timeout: NodeJS.Timeout;
   setCurrentStreamId: (id: number | null) => void;
   updateDebates: (updater: (rounds: MessageGroup[]) => MessageGroup[]) => void;
 }
 
 export function useStreamHandler() {
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const currentRoundRef = useRef<number | null>(null);
   const currentMessageRef = useRef<number | null>(null);
   const messageBufferRef = useRef<string>('');
 
-  const cleanupStream = ({ eventSource, timeout, setCurrentStreamId }: StreamState) => {
-    eventSource.close();
-    clearTimeout(timeout);
+  const cleanupStream = ({ setCurrentStreamId }: StreamState) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setCurrentStreamId(null);
   };
 
@@ -77,11 +77,6 @@ export function useStreamHandler() {
 
   const handleMessageComplete = (updateDebates: StreamState['updateDebates']) => {
     if (currentMessageRef.current) {
-      console.log('Handling message complete:', {
-        messageId: currentMessageRef.current,
-        buffer: messageBufferRef.current
-      });
-
       messageBufferRef.current = '';
       updateDebates(prev => {
         const lastRound = prev[prev.length - 1];
@@ -124,107 +119,126 @@ export function useStreamHandler() {
     });
   };
 
-  const setupEventHandlers = ({ eventSource, updateDebates, timeout, setCurrentStreamId }: StreamState) => {
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        switch (data.type) {
-          case 'start_debate':
-            messageBufferRef.current = '';
-            break;
-          case 'round_start':
-            handleRoundStart(updateDebates);
-            break;
-          case 'message_start':
-            handleMessageStart(updateDebates);
-            break;
-          case 'token':
-            handleToken(updateDebates, data.message);
-            break;
-          case 'token_end':
-            handleToken(updateDebates, '');
-            break;
-          case 'message_complete':
-            handleMessageComplete(updateDebates);
-            break;
-          case 'round_complete':
-            currentRoundRef.current = null;
-            messageBufferRef.current = '';
-            break;
-          case 'debate_complete':
-            console.log('Debate complete event received');
-            handleDebateComplete(updateDebates);
-            cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
-            break;
-          case 'error':
-            cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
-            break;
-        }
-      } catch (error) {
-        console.error('Failed to parse message:', error);
-        cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('EventSource error:', error);
-      cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
-    };
-  };
-
   const startStream = async (
     input: string,
     config: DebateConfig,
-    apiKey: string,  // Add API key parameter
+    apiKey: string,
     updateDebates: StreamState['updateDebates'],
     setCurrentStreamId: StreamState['setCurrentStreamId']
   ) => {
     try {
-      // const response = await fetch('http://localhost:8000/debate/start', {
       const response = await fetch('/api/debate/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': apiKey  // Add API key to headers
-         },
+          'api-key': apiKey
+        },
         body: JSON.stringify({ prompt: input, config })
       });
-
+  
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to start stream. Status: ${response.status}. Error: ${errorText}`);
-    }
-
-      const { debate_id } = await response.json();
-
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+        throw new Error(`Failed to start stream. Status: ${response.status}`);
       }
-
-      // const eventSource = new EventSource(`http://localhost:8000/debate/${debate_id}/stream`);
-      const eventSource = new EventSource(`/api/debate/${debate_id}/stream`);
-
-      eventSourceRef.current = eventSource;
-      const timeout = setTimeout(() => {
-        if (eventSourceRef.current) {
-          console.log("Timeout hit");
-          cleanupStream({ eventSource, timeout, setCurrentStreamId, updateDebates });
+  
+      const { debate_id } = await response.json();
+  
+      // Create new AbortController for this stream
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+  
+      const streamResponse = await fetch(`/api/debate/${debate_id}/stream`, {
+        headers: {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+        signal: abortControllerRef.current.signal
+      });
+  
+      if (!streamResponse.ok) throw new Error('Stream response not ok');
+      if (!streamResponse.body) throw new Error('No response body');
+  
+      const reader = streamResponse.body.getReader();
+      const decoder = new TextDecoder();
+  
+      let buffer = '';
+      const processBuffer = (chunk: string) => {
+        buffer += chunk;
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+  
+        for (const line of lines) {
+          const match = line.match(/^data: (.+)$/m);
+          if (!match) continue;
+  
+          try {
+            const data = JSON.parse(match[1]);
+            console.log('Processed data:', data);
+            
+            switch (data.type) {
+              case 'start_debate':
+                break;
+              case 'round_start':
+                handleRoundStart(updateDebates);
+                break;
+              case 'message_start':
+                handleMessageStart(updateDebates);
+                break;
+              case 'token':
+                handleToken(updateDebates, data.message);
+                break;
+              case 'token_end':
+                handleToken(updateDebates, '');
+                break;
+              case 'message_complete':
+                handleMessageComplete(updateDebates);
+                break;
+              case 'round_complete':
+                break;
+              case 'debate_complete':
+                handleDebateComplete(updateDebates);
+                cleanupStream({ setCurrentStreamId, updateDebates });
+                return true;
+              case 'error':
+                console.error('Stream error:', data.message);
+                return true;
+            }
+          } catch (e) {
+            console.error('Failed to parse line:', line, e);
+          }
         }
-      }, 240000);
-
-      setupEventHandlers({ eventSource, timeout, setCurrentStreamId, updateDebates });
-
+        return false;
+      };
+  
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+  
+          const chunk = decoder.decode(value, { stream: true });
+          const shouldStop = processBuffer(chunk);
+          if (shouldStop) break;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+  
     } catch (error) {
-      console.error('Error:', error);
+      if (error.name === 'AbortError') {
+        console.log('Stream aborted');
+      } else {
+        console.error('Stream error:', error);
+      }
       setCurrentStreamId(null);
     }
   };
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
