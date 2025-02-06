@@ -122,6 +122,19 @@ export default function ScoringContainer({
     }
   };
 
+  const handleLLMJudge = () => {
+    fetch(`/api/debate/${debate.id.toString()}/judge/llm`)
+      .then(response => response.json())
+      .then(data => {
+        console.log('LLM Judge Response:', data);
+        // Handle the response data as needed
+      })
+      .catch(error => {
+        console.error('Error fetching LLM judge response:', error);
+      });
+
+  }
+
   const handleSubmit = () => {
     const scoresWithRankings = scores.map(score => ({
       ...score,
@@ -218,10 +231,17 @@ export default function ScoringContainer({
     <div className="mt-6 bg-white rounded-xl p-6 border border-gray-200 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Score Debate</h2>
-        {isSubmitted && (
-          <div className="flex flex-row gap-2">
+          <div className="">
+            {!isSubmitted ? (
+            <button 
+              onClick={handleLLMJudge}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-white rounded-lg border"
+            >
+              Judge with LLM
+            </button>) : 
             
-            <button
+            (<div className='flex flex-row gap-2'>
+              <button
               onClick={handleDownload}
               className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-white rounded-lg border"
             >
@@ -233,9 +253,8 @@ export default function ScoringContainer({
             className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-white rounded-lg border"
             >
             Hide Scoring
-            </button>
+            </button></div>)}
           </div>
-        )}
       </div>
 
       {/* Drag and Drop Ranking */}

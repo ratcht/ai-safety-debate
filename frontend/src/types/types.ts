@@ -12,7 +12,6 @@ export interface MessageGroup {
   id: number;
   messages: Message[];
   isComplete?: boolean;
-
 }
 
 export interface FloatingButtonProps {
@@ -25,6 +24,7 @@ export interface FloatingButtonProps {
 
 export interface DebateGroup {
   id: number;
+  debateId?: number;
   userInput: string;
   rounds: MessageGroup[];
   config: DebateConfig;

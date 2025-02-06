@@ -10,6 +10,7 @@ interface Message {
 interface MessageGroup {
   id: number;
   messages: Message[];
+  debateId?: number;
 }
 
 interface StreamState {

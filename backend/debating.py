@@ -117,6 +117,7 @@ def judge_debate_llm(debate: Debate):
             context=[{"role": "system", "content": system_prompt}],
             response_format=Score
         )
+        print(type(res.choices[0].message.parsed))
         print("Scored: ", res.choices[0].message.parsed)
         scores.append(res.choices[0].message.parsed)
 

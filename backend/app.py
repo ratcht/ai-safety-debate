@@ -140,7 +140,7 @@ async def judge_llm(debate_id: str):
     Evaluate the debate using an LLM, then, download the results.
     """
     if debate_id not in debates:
-        return {"error": "Debate not found"}
+        return {"error": "Debate not found", "debates": json.dumps(debates), "debate_id": debate_id}
     
     if "debate" not in debates[debate_id]:
         return {"error": "Debate not completed"}

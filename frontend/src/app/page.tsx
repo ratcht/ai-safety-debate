@@ -43,7 +43,7 @@ export default function DebateStream() {
     e.preventDefault();
     if (!input.trim() || !apiKey) return;
 
-    const groupId = Date.now();
+    const groupId = Date.now(); // this needs to be debateId
     const newDebateGroup: DebateGroup = {
       id: groupId,
       userInput: input,
